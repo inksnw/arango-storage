@@ -47,8 +47,17 @@ func (rt ResourceType) GroupVersionResource() schema.GroupVersionResource {
 	}
 }
 
+type Edge struct {
+	From     string `json:"_from"`
+	To       string `json:"_to"`
+	GraphKey string `json:"_key"`
+	GraphID  string `json:"_id"`
+}
+
 type Resource struct {
-	ID uint `gorm:"primaryKey"`
+	GraphKey string `json:"_key"`
+	GraphID  string `json:"_id"`
+	ID       uint   `gorm:"primaryKey"`
 
 	Group    string `gorm:"size:63;not null;uniqueIndex:uni_group_version_resource_cluster_namespace_name;index:idx_group_version_resource_namespace_name;index:idx_group_version_resource_name"`
 	Version  string `gorm:"size:15;not null;uniqueIndex:uni_group_version_resource_cluster_namespace_name;index:idx_group_version_resource_namespace_name;index:idx_group_version_resource_name"`

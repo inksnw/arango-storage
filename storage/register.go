@@ -1,28 +1,24 @@
 package storage
 
 import (
-	"database/sql"
 	"fmt"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
+	"k8s.io/klog/v2"
 	"log"
 	"os"
 
 	"github.com/clusterpedia-io/clusterpedia/pkg/storage"
-	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v4/stdlib"
+	arango "github.com/inksnw/gorm-arango"
 	"github.com/jinzhu/configor"
-	"gopkg.in/natefinch/lumberjack.v2"
-	gmysql "gorm.io/driver/mysql"
-	gpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"k8s.io/klog/v2"
 )
 
 const (
-	StorageName = "sample-storage-layer"
+	StorageName = "arango-storage-layer"
 
-	defaultLogFileName = "/var/log/clusterpedia/sample-storage-layer.log"
+	defaultLogFileName = "/var/log/clusterpedia/arango-storage-layer.log"
 )
 
 func RegisterStorageLayer() {
@@ -42,25 +38,11 @@ func NewStorageFactory(configPath string) (storage.StorageFactory, error) {
 
 	var dialector gorm.Dialector
 	switch cfg.Type {
-	case "mysql":
-		mysqlConfig, err := cfg.genMySQLConfig()
-		if err != nil {
-			return nil, err
-		}
+	case "arango":
+		dsn := fmt.Sprintf("http://%s:%s", cfg.Host, cfg.Port)
+		conf := &arango.Config{URI: dsn, Database: cfg.Database, Timeout: 5}
+		dialector = arango.Open(conf)
 
-		connector, err := mysql.NewConnector(mysqlConfig)
-		if err != nil {
-			return nil, err
-		}
-
-		dialector = gmysql.New(gmysql.Config{Conn: sql.OpenDB(connector)})
-	case "postgres":
-		pgconfig, err := cfg.genPostgresConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		dialector = gpostgres.New(gpostgres.Config{Conn: stdlib.OpenDB(*pgconfig)})
 	default:
 		return nil, fmt.Errorf("not support storage type: %s", cfg.Type)
 	}
@@ -74,6 +56,13 @@ func NewStorageFactory(configPath string) (storage.StorageFactory, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.Type == "arango" {
+		err = CreateGraph(db, cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -86,10 +75,9 @@ func NewStorageFactory(configPath string) (storage.StorageFactory, error) {
 	sqlDB.SetMaxOpenConns(connPool.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(connPool.ConnMaxLifetime)
 
-	if err := db.AutoMigrate(&Resource{}); err != nil {
+	if err := db.AutoMigrate(&Resource{}, &Edge{}); err != nil {
 		return nil, err
 	}
-
 	return &StorageFactory{db}, nil
 }
 

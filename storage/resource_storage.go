@@ -62,8 +62,10 @@ func (s *ResourceStorage) Create(ctx context.Context, cluster string, obj runtim
 	if err := s.codec.Encode(obj, &buffer); err != nil {
 		return err
 	}
-
+	graphID := fmt.Sprintf("%s/%s", "resources", metaobj.GetUID())
 	resource := Resource{
+		GraphKey:        string(metaobj.GetUID()),
+		GraphID:         graphID,
 		Cluster:         cluster,
 		OwnerUID:        ownerUID,
 		UID:             metaobj.GetUID(),
@@ -79,6 +81,12 @@ func (s *ResourceStorage) Create(ctx context.Context, cluster string, obj runtim
 	}
 	if deletedAt := metaobj.GetDeletionTimestamp(); deletedAt != nil {
 		resource.DeletedAt = sql.NullTime{Time: deletedAt.Time, Valid: true}
+	}
+	if s.db.Name() == "arango" {
+		err = s.addEdge(obj, resource)
+		if err != nil {
+			return err
+		}
 	}
 
 	result := s.db.WithContext(ctx).Create(&resource)
@@ -107,7 +115,7 @@ func (s *ResourceStorage) Update(ctx context.Context, cluster string, obj runtim
 		"owner_uid":        ownerUID,
 		"uid":              metaobj.GetUID(),
 		"resource_version": metaobj.GetResourceVersion(),
-		"object":           buffer.Bytes(),
+		"object":           obj,
 	}
 	if deletedAt := metaobj.GetDeletionTimestamp(); deletedAt != nil {
 		updatedResource["deleted_at"] = sql.NullTime{Time: deletedAt.Time, Valid: true}

@@ -3,18 +3,14 @@ package storage
 import (
 	"errors"
 	"fmt"
+	arangodriver "github.com/arangodb/go-driver"
+	"github.com/clusterpedia-io/clusterpedia/pkg/storage"
+	"gorm.io/gorm"
 	"io"
+	genericstorage "k8s.io/apiserver/pkg/storage"
 	"net"
 	"os"
 	"syscall"
-
-	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgerrcode"
-	"gorm.io/gorm"
-	genericstorage "k8s.io/apiserver/pkg/storage"
-
-	"github.com/clusterpedia-io/clusterpedia/pkg/storage"
 )
 
 func InterpretResourceDBError(cluster, name string, err error) error {
@@ -30,6 +26,11 @@ func InterpretDBError(key string, err error) error {
 		return nil
 	}
 
+	if arangoErr, ok := err.(arangodriver.ArangoError); ok {
+		if arangoErr.ErrorNum == arangodriver.ErrArangoUniqueConstraintViolated {
+			return genericstorage.NewKeyExistsError(key, 0)
+		}
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return genericstorage.NewKeyNotFoundError(key, 0)
 	}
@@ -43,53 +44,5 @@ func InterpretDBError(key string, err error) error {
 		return storage.NewRecoverableException(err)
 	}
 
-	// TODO(iceber): add dialector judgment
-	mysqlErr := InterpretMysqlError(key, err)
-	if mysqlErr != err {
-		return mysqlErr
-	}
-
-	pgError := InterpretPostgresError(key, err)
-	if pgError != err {
-		return pgError
-	}
-
-	return err
-}
-
-func InterpretMysqlError(key string, err error) error {
-	var mysqlErr *mysql.MySQLError
-	if !errors.As(err, &mysqlErr) {
-		return err
-	}
-
-	switch mysqlErr.Number {
-	// ER_SERVER_SHUTDOWN: Server shutdown in progress
-	case 1053:
-		return storage.NewRecoverableException(err)
-	case 1062:
-		return genericstorage.NewKeyExistsError(key, 0)
-	case 1040:
-		// klog.Error("too many connections")
-	}
-	return err
-}
-
-func InterpretPostgresError(key string, err error) error {
-	if pgconn.Timeout(err) {
-		return storage.NewRecoverableException(err)
-	}
-
-	var pgError *pgconn.PgError
-	if !errors.As(err, &pgError) {
-		return err
-	}
-
-	switch pgError.Code {
-	case pgerrcode.UniqueViolation:
-		return genericstorage.NewKeyExistsError(key, 0)
-	case pgerrcode.AdminShutdown:
-		return storage.NewRecoverableException(err)
-	}
 	return err
 }

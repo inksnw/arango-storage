@@ -51,26 +51,6 @@ func (jsonQuery *JSONQueryExpression) NotIn(values ...string) *JSONQueryExpressi
 	return jsonQuery
 }
 
-func (jsonQuery *JSONQueryExpression) writeMysqlJSONKey(builder clause.Builder) {
-	writeString(builder, "JSON_EXTRACT(")
-
-	builder.WriteQuoted(jsonQuery.column)
-	writeString(builder, ",")
-	builder.AddVar(builder, fmt.Sprintf(`$."%s"`, strings.Join(jsonQuery.keys, `"."`)))
-
-	writeString(builder, ")")
-}
-
-func (jsonQuery *JSONQueryExpression) writePostgresJSONKey(builder clause.Builder) {
-	builder.WriteQuoted(jsonQuery.column)
-	for _, key := range jsonQuery.keys[0 : len(jsonQuery.keys)-1] {
-		writeString(builder, " -> ")
-		builder.AddVar(builder, key)
-	}
-	writeString(builder, " ->> ")
-	builder.AddVar(builder, jsonQuery.keys[len(jsonQuery.keys)-1])
-}
-
 func (jsonQuery *JSONQueryExpression) Build(builder clause.Builder) {
 	if len(jsonQuery.keys) == 0 {
 		return
@@ -78,79 +58,12 @@ func (jsonQuery *JSONQueryExpression) Build(builder clause.Builder) {
 
 	if stmt, ok := builder.(*gorm.Statement); ok {
 		switch stmt.Dialector.Name() {
-		case "mysql", "sqlite":
-			if jsonQuery.not && len(jsonQuery.values) != 0 {
-				writeString(builder, "(")
-				defer func() {
-					writeString(builder, ")")
-				}()
-
-				jsonQuery.writeMysqlJSONKey(builder)
-				writeString(builder, " IS NULL")
-				writeString(builder, " OR ")
-			}
-
-			writeString(builder, "JSON_UNQUOTE(")
-			jsonQuery.writeMysqlJSONKey(builder)
-			writeString(builder, ")")
-
-			switch len(jsonQuery.values) {
-			case 0:
-				if jsonQuery.not {
-					writeString(builder, " IS NULL")
-				} else {
-					writeString(builder, " IS NOT NULL")
-				}
-			case 1:
-				if jsonQuery.not {
-					writeString(builder, " != ")
-				} else {
-					writeString(builder, " = ")
-				}
-				builder.AddVar(builder, jsonQuery.values[0])
-			default:
-				if jsonQuery.not {
-					writeString(builder, " NOT IN ")
-				} else {
-					writeString(builder, " IN ")
-				}
-				builder.AddVar(builder, jsonQuery.values)
-			}
-		case "postgres":
-			if jsonQuery.not && len(jsonQuery.values) != 0 {
-				writeString(builder, "(")
-				defer func() {
-					writeString(builder, ")")
-				}()
-
-				jsonQuery.writePostgresJSONKey(builder)
-				writeString(builder, " IS NULL")
-				writeString(builder, " OR ")
-			}
-
-			jsonQuery.writePostgresJSONKey(builder)
-			switch len(jsonQuery.values) {
-			case 0:
-				if jsonQuery.not {
-					writeString(builder, " IS NULL")
-				} else {
-					writeString(builder, " IS NOT NULL")
-				}
-			case 1:
-				if jsonQuery.not {
-					writeString(builder, " != ")
-				} else {
-					writeString(builder, " = ")
-				}
-				builder.AddVar(builder, jsonQuery.values[0])
-			default:
-				if jsonQuery.not {
-					writeString(builder, " NOT IN ")
-				} else {
-					writeString(builder, " IN ")
-				}
-				builder.AddVar(builder, jsonQuery.values)
-			}
+		case "arango":
+			query := strings.Join(jsonQuery.keys[0:len(jsonQuery.keys)-1], ".")
+			query = query + fmt.Sprintf("['%s']", jsonQuery.keys[len(jsonQuery.keys)-1])
+			value := jsonQuery.values[0]
+			query = fmt.Sprintf(" doc.object.%s == '%s' FILTER ", query, value)
+			writeString(builder, query)
 		}
 	}
 }
