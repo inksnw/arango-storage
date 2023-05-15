@@ -59,10 +59,15 @@ func (jsonQuery *JSONQueryExpression) Build(builder clause.Builder) {
 	if stmt, ok := builder.(*gorm.Statement); ok {
 		switch stmt.Dialector.Name() {
 		case "arango":
-			query := strings.Join(jsonQuery.keys[0:len(jsonQuery.keys)-1], ".")
-			query = query + fmt.Sprintf("['%s']", jsonQuery.keys[len(jsonQuery.keys)-1])
-			value := jsonQuery.values[0]
-			query = fmt.Sprintf(" doc.object.%s == '%s' FILTER ", query, value)
+			key := strings.Join(jsonQuery.keys[0:len(jsonQuery.keys)-1], ".")
+			key = key + fmt.Sprintf("['%s']", jsonQuery.keys[len(jsonQuery.keys)-1])
+			var query string
+			valuesStr := fmt.Sprintf("['%s']", strings.Join(jsonQuery.values, "', '"))
+			if jsonQuery.not {
+				query = fmt.Sprintf(" doc.object.%s NOT IN %s FILTER ", key, valuesStr)
+			} else {
+				query = fmt.Sprintf(" doc.object.%s  IN %s FILTER ", key, valuesStr)
+			}
 			writeString(builder, query)
 		}
 	}
