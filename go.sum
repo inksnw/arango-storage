@@ -104,8 +104,8 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/huandu/xstrings v1.3.1/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/imdario/mergo v0.3.11/go.mod h1:jmQim1M+e3UYxmgPu/WyfjB3N3VflVyUjjjwH0dnCYA=
-github.com/inksnw/gorm-arango v0.1.4 h1:dBIpSmQmH/63hTX2AQ/6BHeFkHOIKPs8TUVAaTlRIWY=
-github.com/inksnw/gorm-arango v0.1.4/go.mod h1:AaQPdUx1UnmrcTzhfmTkRXAbpReDzzShgMehUhArwgc=
+github.com/inksnw/gorm-arango v0.1.5 h1:6UQsjNCRu83SSbpwo9v/vfcuUi0MFSS2lapa8DmxhRo=
+github.com/inksnw/gorm-arango v0.1.5/go.mod h1:AaQPdUx1UnmrcTzhfmTkRXAbpReDzzShgMehUhArwgc=
 github.com/jackc/chunkreader v1.0.0 h1:4s39bBR8ByfqH+DKm8rQA3E1LHZWB9XWcrz8fqaZbe0=
 github.com/jackc/chunkreader v1.0.0/go.mod h1:RT6O25fNZIuasFJRyZ4R/Y2BbhasbmZXF9QQ7T3kePo=
 github.com/jackc/chunkreader/v2 v2.0.0/go.mod h1:odVSm741yZoC3dpHEUXIqA9tQRhFrgOHwnPIn9lDKlk=
