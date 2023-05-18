@@ -134,16 +134,35 @@ func (d Dialector) DefaultValueOf(field *schema.Field) gormClause.Expression {
 }
 
 func (d Dialector) BindVarTo(writer gormClause.Writer, stmt *gorm.Statement, v any) {
-	// TODO: Implement
-	// writer.WriteString(fmt.Sprintf("%v", v))
+
+	switch ins := v.(type) {
+	case string:
+		value := fmt.Sprintf("'%v'", v)
+		writer.WriteString(value)
+	case time.Time:
+		value := fmt.Sprintf("'timestamp:%d'", ins.UnixMilli())
+		writer.WriteString(value)
+	case bool:
+		value := fmt.Sprintf("%t", v)
+		writer.WriteString(value)
+	case *gorm.DB:
+		stmt.Logger.Error(context.TODO(), "not support sub query")
+		writer.WriteString("")
+
+	default:
+		value := fmt.Sprintf("%v", v)
+		writer.WriteString(value)
+	}
 }
 
 func (d Dialector) QuoteTo(writer gormClause.Writer, str string) {
 	// TODO: Implement
+	//panic("Implement me")
 }
 
 func (d Dialector) Explain(sql string, vars ...any) string {
 	// TODO: Implement
+	//panic("Implement me")
 	return ""
 }
 
