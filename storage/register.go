@@ -47,12 +47,14 @@ func NewStorageFactory(configPath string) (storage.StorageFactory, error) {
 		return nil, fmt.Errorf("not support storage type: %s", cfg.Type)
 	}
 
-	logger, err := newLogger(cfg)
-	if err != nil {
-		return nil, err
-	}
+	//logger, err := newLogger(cfg)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	db, err := gorm.Open(dialector, &gorm.Config{SkipDefaultTransaction: true, Logger: logger})
+	customLogger := logger.Default.LogMode(logger.Info)
+
+	db, err := gorm.Open(dialector, &gorm.Config{SkipDefaultTransaction: true, Logger: customLogger})
 	if err != nil {
 		return nil, err
 	}
